@@ -17,12 +17,14 @@ def main():
     subscription_manager = SubscriptionManager(config.subscriptions_file)  # 创建订阅管理器实例
     command_handler = CommandHandler(github_client, subscription_manager, hackernews_client, report_generator)  # 创建命令处理器实例
 
+    source_parser = command_handler.source_parser  # 获取源命令解析器
     github_parser = command_handler.github_parser  # 获取GitHub命令解析器
     hackernews_parser = command_handler.hackernews_parser  # 获取HackerNews命令解析器
 
     while True:
         try:
-            command_handler.print_source_help()
+            source_parser.print_help()
+            print("Enter 'exit' or 'quit' to exit the program")
             source = input("Source> ")  # 等待用户输入
             if source in ['exit', 'quit']:  # 如果输入为退出命令，则结束循环
                 break
@@ -33,8 +35,9 @@ def main():
                 parser = hackernews_parser
             parser.print_help()  # 打印命令帮助信息
             while True:
+                print("Enter 'exit' or 'quit' to return to the source selection menu")
                 user_input = input("Action> ")  # 等待用户输入
-                if user_input in ['back', 'up']:  # 如果输入为退出命令，则结束循环
+                if user_input in ['exit', 'quit']:  # 如果输入为退出命令，则结束循环
                     break
                 try:
                     args = parser.parse_args(shlex.split(user_input))  # 解析用户输入的命令
