@@ -10,6 +10,7 @@ from report_generator import ReportGenerator  # 导入报告生成器类
 from llm import LLM  # 导入语言模型类，可能用于生成报告内容
 from subscription_manager import SubscriptionManager  # 导入订阅管理器类，管理GitHub仓库订阅
 from logger import LOG  # 导入日志记录器
+from hackernews_client import HackerNewsClient
 
 
 def graceful_shutdown(signum, frame):
@@ -18,17 +19,26 @@ def graceful_shutdown(signum, frame):
     sys.exit(0)  # 安全退出程序
 
 def github_job(subscription_manager, github_client, report_generator, notifier, days):
-    LOG.info("[开始执行定时任务]")
+    LOG.info("[开始执行github_job定时任务]")
     subscriptions = subscription_manager.list_subscriptions()  # 获取当前所有订阅
     LOG.info(f"订阅列表：{subscriptions}")
     for repo in subscriptions:
         # 遍历每个订阅的仓库，执行以下操作
         markdown_file_path = github_client.export_progress_by_date_range(repo, days)
         # 从Markdown文件自动生成进展简报
-        report, report_file_path = report_generator.generate_report_by_date_range(markdown_file_path, days)
-        notifier.notify(repo, report)
-    LOG.info(f"[定时任务执行完毕]")
+        report, report_file_path = report_generator.generate_report_by_date_range(markdown_file_path,"github",days)
+        subject = f"[GitHubSentinel]{repo} 进展简报"
+        notifier.notify(subject, report)
+    LOG.info(f"[github_job定时任务执行完毕]")
 
+def hackernews_job(hackernews_client,report_generator, notifier, days):
+    LOG.info("[开始执行hackernews_job定时任务]")
+    markdown_file_path = hackernews_client.export_hacker_news()
+    # 从Markdown文件自动生成进展简报
+    report, report_file_path = report_generator.generate_daily_report(markdown_file_path,"hackernews")
+    subject = f"Hacker news技术趋势报告"
+    notifier.notify(subject, report)
+    LOG.info(f"[hackernews_job定时任务执行完毕]")
 
 def main():
     # 设置信号处理器
@@ -36,6 +46,8 @@ def main():
 
     config = Config()  # 创建配置实例
     github_client = GitHubClient(config.github_token)  # 创建GitHub客户端实例
+    hackernews_client = HackerNewsClient()
+
     notifier = Notifier(config.email)  # 创建通知器实例
     llm = LLM()  # 创建语言模型实例
     report_generator = ReportGenerator(llm)  # 创建报告生成器实例
@@ -43,6 +55,7 @@ def main():
 
     # 启动时立即执行（如不需要可注释）
     github_job(subscription_manager, github_client, report_generator, notifier, config.freq_days)
+    hackernews_job(hackernews_client, report_generator, notifier, config.freq_days)
 
     # 安排每天的定时任务
     schedule.every(config.freq_days).days.at(
