@@ -2,6 +2,7 @@ import gradio as gr  # 导入gradio库用于创建GUI
 
 from config import Config  # 导入配置管理模块
 from github_client import GitHubClient  # 导入用于GitHub API操作的客户端
+from hackernews_client import HackerNewsClient  # 导入用于HackerNews API操作的客户端
 from report_generator import ReportGenerator  # 导入报告生成器模块
 from llm import LLM  # 导入可能用于处理语言模型的LLM类
 from subscription_manager import SubscriptionManager  # 导入订阅管理器
@@ -10,20 +11,20 @@ from logger import LOG  # 导入日志记录器
 # 创建各个组件的实例
 config = Config()
 github_client = GitHubClient(config.github_token)
+hackernews_client = HackerNewsClient()
 llm = LLM()
 report_generator = ReportGenerator(llm)
 subscription_manager = SubscriptionManager(config.subscriptions_file)
 
-def export_progress_by_date_range(repo, days):
+def github_export_progress_by_date_range(repo, days):
     # 定义一个函数，用于导出和生成指定时间范围内项目的进展报告
     raw_file_path = github_client.export_progress_by_date_range(repo, days)  # 导出原始数据文件路径
-    report, report_file_path = report_generator.generate_report_by_date_range(raw_file_path, days)  # 生成并获取报告内容及文件路径
-
+    report, report_file_path = report_generator.generate_report_by_date_range(raw_file_path, "github", days)  # 生成并获取报告内容及文件路径
     return report, report_file_path  # 返回报告内容和报告文件路径
 
 # 创建Gradio界面
-demo = gr.Interface(
-    fn=export_progress_by_date_range,  # 指定界面调用的函数
+github = gr.Interface(
+    fn=github_export_progress_by_date_range,  # 指定界面调用的函数
     title="GitHubSentinel",  # 设置界面标题
     inputs=[
         gr.Dropdown(
@@ -34,6 +35,21 @@ demo = gr.Interface(
     ],
     outputs=[gr.Markdown(), gr.File(label="下载报告")],  # 输出格式：Markdown文本和文件下载
 )
+
+def hackernews_export_report():
+    # 定义一个函数，用于导出和生成指定时间范围内项目的进展报告
+    raw_file_path = hackernews_client.export_hacker_news()  # 导出原始数据文件路径
+    report, report_file_path = report_generator.generate_daily_report(raw_file_path, "hackernews")  # 生成并获取报告内容及文件路径
+    return report, report_file_path  # 返回报告内容和报告文件路径
+
+hackernews = gr.Interface(
+    fn=hackernews_export_report,  # 指定界面调用的函数
+    title="HackerNews",  # 设置界面标题
+    inputs=None,  # 无输入
+    outputs=[gr.Markdown(), gr.File(label="下载报告")],  # 输出格式：Markdown文本和文件下载
+)
+
+demo = gr.TabbedInterface([github, hackernews], ["Github", "Hacker news"])  # 创建一个Tabbed界面，包含两个子界面
 
 if __name__ == "__main__":
     demo.launch(share=True, server_name="0.0.0.0")  # 启动界面并设置为公共可访问
