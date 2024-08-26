@@ -1,18 +1,49 @@
 # src/command_handler.py
-
-import argparse
-
 import argparse  # 导入argparse库，用于处理命令行参数解析
 
 class CommandHandler:
-    def __init__(self, github_client, subscription_manager, report_generator):
+    def __init__(self, github_client, subscription_manager, hackernews_client,report_generator):
         # 初始化CommandHandler，接收GitHub客户端、订阅管理器和报告生成器
         self.github_client = github_client
+        self.hackernews_client = hackernews_client
         self.subscription_manager = subscription_manager
         self.report_generator = report_generator
-        self.parser = self.create_parser()  # 创建命令行解析器
+        self.github_parser = self.create_github_parser()  # 创建命令行解析器
+        self.hackernews_parser = self.create_hackernews_parser()  # 创建HackerNews命令行解析器
+        self.source_parser = self.create_source_parser()  # 创建源命令行解析器
 
-    def create_parser(self):
+    def create_source_parser(self):
+        parser = argparse.ArgumentParser(
+            description='Source Sentinel Command Line Interface',
+            formatter_class=argparse.RawTextHelpFormatter
+        )
+        subparsers = parser.add_subparsers(title='Sources', dest='source')
+
+        parser_github = subparsers.add_parser('github', help='GitHub Sentinel Command Line Interface')
+        parser_github.set_defaults(func=self.print_github_help)
+
+        parser_hackernews = subparsers.add_parser('hackernews', help='HackerNews Sentinel Command Line Interface')
+        parser_hackernews.set_defaults(func=self.print_hackernews_help)
+
+        parser_help = subparsers.add_parser('help', help='Show help message')
+        parser_help.set_defaults(func=self.print_source_help)
+        return parser
+
+    def create_hackernews_parser(self):
+        parser = argparse.ArgumentParser(
+            description='HackerNews Sentinel Command Line Interface',
+            formatter_class=argparse.RawTextHelpFormatter
+        )
+        subparsers = parser.add_subparsers(title='Commands', dest='command')
+        parser_export = subparsers.add_parser('export', help='Export hot tech news report')
+        parser_export.set_defaults(func=self.export_hackernews)
+        return parser
+    
+    def export_hackernews(self, args):
+        self.hackernews_client.export_hacker_news()
+        print("Exported hot tech news from HackerNews")
+
+    def create_github_parser(self):
         # 创建并配置命令行解析器
         parser = argparse.ArgumentParser(
             description='GitHub Sentinel Command Line Interface',
@@ -52,7 +83,7 @@ class CommandHandler:
 
         # 帮助命令
         parser_help = subparsers.add_parser('help', help='Show help message')
-        parser_help.set_defaults(func=self.print_help)
+        parser_help.set_defaults(func=self.print_github_help)
 
         return parser  # 返回配置好的解析器
 
@@ -83,5 +114,12 @@ class CommandHandler:
         self.report_generator.generate_daily_report(args.file)
         print(f"Generated daily report from file: {args.file}")
 
-    def print_help(self, args=None):
-        self.parser.print_help()  # 输出帮助信息
+    
+    def print_source_help(self):
+        self.source_parser.print_help()
+
+    def print_github_help(self, args):
+        self.github_parser.print_help()
+
+    def print_hackernews_help(self, args):
+        self.hackernews_parser.print_help()
