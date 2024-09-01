@@ -20,5 +20,6 @@ COPY validate_tests.sh .
 RUN chmod +x validate_tests.sh
 RUN ./validate_tests.sh
 
+EXPOSE 7860
 # 设置容器入口
-CMD ["python", "src/daemon_process.py"]
+CMD ["python", "src/gradio_server.py"]
